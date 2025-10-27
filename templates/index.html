@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>漫画阅读器</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div id="app">
+        <header id="mainHeader">
+            <h1>🎌 漫画阅读器</h1>
+            <div class="header-buttons">
+                <button id="backBtn" onclick="goBack()" style="display: none;">← 返回</button>
+                <button id="historyBtn" onclick="showHistory()">📖 历史记录</button>
+                <button id="settingsBtn" onclick="showSettings()">⚙️ 设置</button>
+            </div>
+        </header>
+        
+        <main>
+            <!-- 漫画列表视图 -->
+            <div id="mangaListView">
+                <div class="breadcrumb">
+                    <span id="breadcrumbPath">首页</span>
+                </div>
+                <div id="loadingList" class="loading">正在加载漫画列表...</div>
+                <div id="mangaGrid" class="manga-grid"></div>
+            </div>
+            
+            <!-- 漫画阅读视图 -->
+            <div id="mangaReaderView" style="display: none;">
+
+
+                <div id="imageContainer" class="image-container" onclick="handleImageClick(event)">
+                    <div class="click-zones">
+                        <div class="click-zone left-zone" title="点击上一页"></div>
+                        <div class="click-zone center-zone" title="点击显示进度条"></div>
+                        <div class="click-zone right-zone" title="点击下一页"></div>
+                    </div>
+                    <img id="mangaImage" alt="漫画图片">
+                    
+
+                </div>
+
+
+                <div class="reader-header">
+                    <div class="manga-info">
+                        <h2 id="currentMangaName"></h2>
+                        <p id="currentFileName" class="file-name">加载中...</p>
+                    </div>
+                    <div class="reader-controls">
+                        <button onclick="previousImage()">← 上一页</button>
+                        <span id="imageCounter">1 / 1</span>
+                        <button onclick="nextImage()">下一页 →</button>
+                        <button onclick="reloadCurrentImage()">reload </button>
+                    </div>
+                    <span id="cacheStatus" class="cache-status">缓存: 0</span>
+                </div>
+                
+                <!-- 章节导航提示 -->
+                <div id="chapterNavigation" class="chapter-navigation" style="display: none;">
+                    <div class="nav-hint">
+                        <p>已到达本章末尾</p>
+                        <button id="nextChapterBtn" onclick="goToNextChapter()">进入下一章</button>
+                        <button onclick="hideChapterNavigation()">取消</button>
+                    </div>
+                </div>
+                
+                <!-- <div id="loadingReader" class="loading">正在加载图片...</div>
+                <div class="image-help">
+                    💡 提示: 点击左侧/右侧翻页，点击中间显示进度条，空格键快速显示进度条
+                </div>
+                
+                
+                <div class="navigation-buttons">
+                    <button onclick="previousImage()" class="nav-btn prev-btn">← 上一页</button>
+                    <button onclick="nextImage()" class="nav-btn next-btn">下一页 →</button>
+                </div> -->
+            </div>
+            
+
+
+            <!-- 历史记录视图 -->
+            <div id="historyView" style="display: none;">
+                <h2>📖 阅读历史</h2>
+                <div id="historyList" class="history-list"></div>
+            </div>
+            
+            <!-- 设置视图 -->
+            <div id="settingsView" style="display: none;">
+                <h2>⚙️ 设置</h2>
+                <div class="settings-container">
+                    <div class="setting-group">
+                        <h3>阅读设置</h3>
+                        <div class="setting-item">
+                            <label for="readingDirection">阅读方向:</label>
+                            <select id="readingDirection" onchange="updateReadingDirection()">
+                                <option value="left_to_right">从左到右（下一页在右侧）</option>
+                                <option value="right_to_left">从右到左（下一页在左侧）</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label for="preloadBuffer">cachesize:</label>
+                            <select id="preloadBuffer" onchange="updateBufferSize()">
+                            <option value=1>1 张</option>
+                            <option value=2>2 张</option>
+                            <option value=3>3 张</option>
+                            <option value=5>5 张</option>
+                            <option value=10>10 张</option>
+                            <option value=15>15 张</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <h3>漫画路径管理</h3>
+                        <div id="pathList" class="path-list"></div>
+                        <div class="add-path-section">
+                            <input type="text" id="newPathInput" placeholder="输入新的漫画文件夹路径">
+                            <button onclick="addNewPath()">添加路径</button>
+                        </div>
+                    </div>
+                    
+                    <button onclick="saveSettings()">save</button>
+                </div>
+
+            </div>
+        </main>
+        
+        <!-- 全屏图片进度滑动条 -->
+        <div id="imageSlider" class="image-slider-fullscreen" style="display: none;">
+            <div class="slider-container">
+                <input type="range" id="imageRange" min="0" max="100" value="0" class="slider-fullscreen">
+                <div class="slider-info-fullscreen">
+                    <span id="sliderText">第 1 页 / 总共 1 页</span>
+                    <span id="currentImageName" class="image-name">图片名称</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
