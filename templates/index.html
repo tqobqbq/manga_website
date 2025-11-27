@@ -11,7 +11,7 @@
         <header id="mainHeader">
             <h1>🎌 漫画阅读器</h1>
             <div class="header-buttons">
-                <button id="backBtn" onclick="goBack()" style="display: none;">← 返回</button>
+                <button id="backBtn" onclick="goBack()" style="display: vlock;">← 返回</button>
                 <button id="historyBtn" onclick="showHistory()">📖 历史记录</button>
                 <button id="settingsBtn" onclick="showSettings()">⚙️ 设置</button>
             </div>
@@ -19,31 +19,31 @@
         
         <main>
             <!-- 漫画列表视图 -->
-            <div id="mangaListView">
-                <div class="breadcrumb">
-                    <span id="breadcrumbPath">首页</span>
-                </div>
-                <div id="loadingList" class="loading">正在加载漫画列表...</div>
+            <div class="breadcrumb" id="breadcrumbPath2">
+                <span id="breadcrumbPath">首页</span>
+            </div>
+            <div id="listView">
+                
                 <div id="mangaGrid" class="manga-grid"></div>
             </div>
             
             <!-- 漫画阅读视图 -->
-            <div id="mangaReaderView" style="display: none;">
+            <div id="readerView" style="display: none;">
 
 
                 <div id="imageContainer" class="image-container" onclick="handleImageClick(event)">
-                    <div class="click-zones">
+                    <!-- <div class="click-zones">
                         <div class="click-zone left-zone" title="点击上一页"></div>
                         <div class="click-zone center-zone" title="点击显示进度条"></div>
                         <div class="click-zone right-zone" title="点击下一页"></div>
-                    </div>
+                    </div> -->
                     <img id="mangaImage" alt="漫画图片">
                     
 
                 </div>
 
 
-                <div class="reader-header">
+                <div class="reader-header" id="readerHeaderView">
                     <div class="manga-info">
                         <h2 id="currentMangaName"></h2>
                         <p id="currentFileName" class="file-name">加载中...</p>
@@ -125,6 +125,19 @@
                 </div>
 
             </div>
+
+            <!-- EPUB阅读视图 -->
+            <div id="epubView" style="display: none; height: 100vh; display: flex; flex-direction: column;">
+                <div id="epubHeader" class="reader-header" style="position: fixed; top: 0; width: 100%; z-index: 1000; display: flex; justify-content: space-between; padding: 10px; background: rgba(255,255,255,0.9);">
+                    <button onclick="goBack()">← 返回</button>
+                    <span id="epubTitle">EPUB Reader</span>
+                    <div class="epub-controls">
+                        <button onclick="prevEpubPage()">上一页</button>
+                        <button onclick="nextEpubPage()">下一页</button>
+                    </div>
+                </div>
+                <div id="epubArea" style="flex: 1; margin-top: 50px; height: calc(100vh - 50px);"></div>
+            </div>
         </main>
         
         <!-- 全屏图片进度滑动条 -->
@@ -140,5 +153,7 @@
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
 </body>
 </html>

@@ -48,7 +48,7 @@ def save_history(history):
     with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
         json.dump(history, f, ensure_ascii=False, indent=2)
 
-def add_to_history(manga_path, chapter_name, image_index, total_images):
+def add_to_history(manga_path, chapter_name, image_index, total_images, epub_cfi=None, is_epub=False):
     """添加到阅读历史"""
     history = load_history()
     
@@ -62,8 +62,14 @@ def add_to_history(manga_path, chapter_name, image_index, total_images):
         'image_index': image_index,
         'total_images': total_images,
         'timestamp': datetime.now().isoformat(),
-        'progress_percent': round((image_index + 1) / total_images * 100, 1)
+        'is_epub': is_epub
     }
+    
+    if is_epub:
+        new_record['epub_cfi'] = epub_cfi
+        new_record['progress_percent'] = round(image_index, 1) # For EPUB, image_index is percentage (0-100)
+    else:
+        new_record['progress_percent'] = round((image_index + 1) / total_images * 100, 1)
     
     history.insert(0, new_record)
     
@@ -85,40 +91,46 @@ def scan_directory(path, current_path=""):
     """递归扫描目录，支持多级结构"""
     items = []
     
-    try:
-        for item in os.listdir(path):
-            item_path = '/'.join([path, item])
-            relative_path = '/'.join([current_path, item]) if current_path else item
+    for item in os.listdir(path):
+        item_path = os.path.join(path, item)
+        
+        # 获取文件/文件夹统计信息
+        stat_info = os.stat(item_path)
+        modified_time = datetime.fromtimestamp(stat_info.st_mtime)
+        
+        if os.path.isdir(item_path):
+            items.append({
+                'name': item,
+                'type': 'folder',
+                'modified_time': modified_time.isoformat(),
+                'size': 0
+            })
+        else:
+            # 处理文件
+            file_size = stat_info.st_size
+            is_image = is_image_file(item)
+            is_epub = item.lower().endswith('.epub')
             
-            if os.path.isdir(item_path):
-                # 检查是否包含图片文件
-                has_images = any(is_image_file(f) for f in os.listdir(item_path) if os.path.isfile('/'.join([item_path, f])))
-
-                # 检查子文件夹
-                subdirs = [f for f in os.listdir(item_path) if os.path.isdir('/'.join([item_path, f]))]
+            items.append({
+                'name': item,
+                'type': 'image' if is_image else ('epub' if is_epub else 'file'),
+                'modified_time': modified_time.isoformat(),
+                'size': file_size
+            })
                 
-                items.append({
-                    'name': item,
-                    'path': relative_path,
-                    'type': 'chapter' if has_images else 'manga',
-                    'has_images': has_images,
-                    'has_subdirs': len(subdirs) > 0,
-                    'image_count': sum(1 for f in os.listdir(item_path) if is_image_file(f)) if has_images else 0
-                })
-    except PermissionError:
-        pass
     
-    return sorted(items, key=lambda x: (x['type'] == 'chapter', x['name']))
+    return items
 
 def get_manga_list(path=""):
     """获取漫画列表，支持多级目录"""
     base_path = get_current_base_path()
-    full_path = '/'.join([base_path, path]) if path else base_path
+    full_path = os.path.join(base_path, path) if path else base_path
     
     if not os.path.exists(full_path):
         return []
     
-    return scan_directory(full_path, path)
+    items = scan_directory(full_path, path)
+    return items
 
 def get_manga_images(manga_path):
     """获取指定漫画章节的所有图片"""
@@ -134,10 +146,11 @@ def get_manga_images(manga_path):
             images.append(filename)
     
     # 智能排序：尝试按数字排序，失败则按字符串排序
-    try:
-        images.sort(key=lambda x: int(''.join(filter(str.isdigit, os.path.splitext(x)[0])) or '0'))
-    except:
-        images.sort()
+    # try:
+    #     images.sort(key=lambda x: int(''.join(filter(str.isdigit, os.path.splitext(x)[0])) or '0'))
+    # except:
+    #     images.sort()
+    images.sort()
     
     return images
 
@@ -192,11 +205,12 @@ def api_manga_list():
     """API: 获取漫画列表"""
     try:
         path = request.args.get('path', '')
+        
         print(f"Fetching manga list for path: {path}")
         manga_list = get_manga_list(path)
         return jsonify({
             'success': True,
-            'data': manga_list,
+            'data': {'items': manga_list},
             'current_path': path
         })
     except Exception as e:
@@ -246,6 +260,33 @@ def api_serve_image(manga_path, filename):
             }), 400
 
         return send_file(image_path, mimetype=mimetypes.guess_type(image_path)[0], max_age=24*3600)
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/epub/<path:epub_path>')
+def api_serve_epub(epub_path):
+    """API: 提供EPUB文件"""
+    try:
+        base_path = get_current_base_path()
+        full_path = os.path.join(base_path, epub_path)
+        
+        if not os.path.exists(full_path):
+            return jsonify({
+                'success': False,
+                'error': 'EPUB file not found'
+            }), 404
+            
+        if not full_path.lower().endswith('.epub'):
+             return jsonify({
+                'success': False,
+                'error': 'Not an EPUB file'
+            }), 400
+
+        return send_file(full_path, mimetype='application/epub+zip')
 
     except Exception as e:
         return jsonify({
@@ -320,7 +361,9 @@ def api_add_history():
             data['manga_path'],
             data['chapter_name'],
             data['image_index'],
-            data['total_images']
+            data['total_images'],
+            data.get('epub_cfi'),
+            data.get('is_epub', False)
         )
         
         return jsonify({
